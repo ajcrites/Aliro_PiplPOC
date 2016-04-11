@@ -1,29 +1,21 @@
-var job = require('../services/job.js');
+const co = require('co');
+const job = require('../services/job.js');
 
 exports.launchPage = function(req, res) {
   res.render('job', {launchPage: true});
 };
 
-exports.beginPeopleSearch = function(req, res) {
+exports.beginPeopleSearch = (req, res, next) => co(function* () {
   // using a hard coded jobId for POC for now
   var jobId = process.env.JOB_ID;
-  job.getJobDetails(jobId, function(err, jobDetails) {
-    if (err) {
-      res.status(err).end();
-    }
-    else {
-      job.searchCloudSearch(jobDetails, function(err, names) {
-        if (!err) {
-          job.sendNamesToPipl(names, function(err, results) {
-            job.searchJobTitle(jobDetails, function(err, matches) {
-              res.render('job', {jobTitle: jobDetails.title, matches: matches, stats: results});
-            });
-          });
-        }
-        else {
-          res.status(err).end();
-        }
-      });
-    }
-  });
-};
+  const jobDetails = yield job.getJobDetails(jobId);
+  const names = yield job.searchCloudSearch(jobDetails);
+  const results = yield [
+    job.sendNamesToPipl(names),
+    job.searchJobTitle(jobDetails),
+  ];
+  console.log(results);
+  const stats = results[0];
+  const matches = results[1];
+  res.render('job', {jobTitle: jobDetails.title, matches, stats});
+});
