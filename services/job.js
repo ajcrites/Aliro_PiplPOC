@@ -44,7 +44,7 @@ exports.searchCloudSearch = jobData => {
       queryParser: 'lucene',
       return: 'person_e',
       // size: 700,
-      size: 2,
+      size: 100,
       query,
     };
 
@@ -68,7 +68,7 @@ exports.sendNamesToPipl = names => {
     const Person = db.collection('person');
     const stats = {
       single_person: 0,
-      possible_person: 0,
+      possible_persons: 0,
       non_match: 0,
     };
 
@@ -76,7 +76,8 @@ exports.sendNamesToPipl = names => {
     const CHUNK_SIZE = 20;
     const meta = lodash.chunk(names, 20);
 
-    yield meta.map(namesArr => co(function* () {
+    yield meta.reduce((promise, namesArr) => co(function* () {
+      yield promise;
       yield namesArr.map(name => co(function* () {
         const body = yield rp({
           url: url.format({
@@ -108,7 +109,7 @@ exports.sendNamesToPipl = names => {
         }
       }));
       yield delay(1000);
-    }));
+    }).catch(err => console.error(err)), Promise.resolve());
 
     db.close();
 
